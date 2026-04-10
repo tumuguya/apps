@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="田んぼ持ち物">
+<title>🌾 田んぼ持ち物チェックリスト</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: #f5f0e8; min-height: 100vh; padding-bottom: 80px; }
+
+  #header {
+    background: #3d4a3a; color: #e8e0cc;
+    padding: 20px 20px 16px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  #header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  #header-sub { font-size: 11px; letter-spacing: 3px; opacity: 0.7; margin-bottom: 2px; }
+  #header-title { font-size: 18px; font-weight: 700; }
+  #reset-btn {
+    background: rgba(255,255,255,0.12); border: none; color: #e8e0cc;
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+  }
+  #progress-bar-wrap { background: rgba(255,255,255,0.15); border-radius: 99px; height: 8px; overflow: hidden; }
+  #progress-bar { height: 100%; background: #c8b87a; border-radius: 99px; transition: width 0.3s ease, background 0.3s; }
+  #progress-label { font-size: 11px; margin-top: 5px; opacity: 0.8; text-align: right; }
+
+  #tabs {
+    display: flex; overflow-x: auto; gap: 6px; padding: 12px 16px;
+    background: #ede7d9; border-bottom: 1px solid #d8cfc0;
+    scrollbar-width: none;
+  }
+  #tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0; background: #fff; color: #555;
+    border: 1.5px solid #ddd; border-radius: 99px;
+    padding: 5px 14px; font-size: 12px; cursor: pointer;
+    font-family: inherit; display: flex; align-items: center; gap: 4px;
+    white-space: nowrap;
+  }
+  .tab-btn.active { color: #fff; }
+  .tab-btn.done-tab { opacity: 0.6; }
+  .tab-sub { font-size: 10px; opacity: 0.8; }
+
+  #list-wrap { padding: 16px; }
+
+  .cat-block { margin-bottom: 16px; }
+  .cat-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    cursor: pointer; user-select: none; border-radius: 10px;
+    padding: 2px; transition: all 0.2s;
+  }
+  .cat-header.complete { padding: 10px 14px; margin-bottom: 0; }
+  .cat-label { font-weight: 700; font-size: 15px; transition: color 0.2s; }
+  .cat-done-badge { font-size: 12px; color: rgba(255,255,255,0.85); margin-left: 4px; }
+  .cat-count {
+    margin-left: auto; font-size: 12px; color: #888;
+    background: #e0d8c8; border-radius: 99px; padding: 2px 10px;
+    transition: all 0.2s;
+  }
+  .cat-arrow {
+    font-size: 12px; color: #aaa; margin-left: 6px;
+    display: inline-block; transition: transform 0.2s;
+  }
+  .cat-arrow.closed { transform: rotate(-90deg); }
+
+  .cat-items {
+    background: #fff; border-radius: 12px;
+    overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  .cat-items.hidden { display: none; }
+
+  .item-row {
+    display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+    border-bottom: 1px solid #f0ebe0; cursor: pointer;
+    background: #fff; transition: background 0.15s;
+  }
+  .item-row.checked-row { background: #f8f5ee; }
+  .item-row:last-child { border-bottom: none; }
+
+  .chk {
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    border: 2px solid #ccc; background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .chk.checked { border-color: var(--cat-color); background: var(--cat-color); }
+  .chk svg { display: none; }
+  .chk.checked svg { display: block; }
+
+  .item-label { font-size: 14px; color: #333; transition: color 0.15s; }
+  .item-label.checked-label { color: #aaa; text-decoration: line-through; }
+
+  .free-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; background: #faf8f4;
+  }
+  .chk.disabled { opacity: 0.35; cursor: default; }
+  .free-input {
+    flex: 1; border: none; outline: none; font-size: 14px;
+    background: transparent; font-family: inherit; color: #666;
+  }
+  .free-input.checked-free { color: #aaa; text-decoration: line-through; }
+
+  #complete-msg {
+    text-align: center; padding: 20px;
+    color: #5a7a50; font-weight: 700; font-size: 16px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-top">
+    <div>
+      <div id="header-sub">大岡 田んぼ作業</div>
+      <div id="header-title">🌾 持ち物チェックリスト</div>
+    </div>
+    <button id="reset-btn" onclick="resetAll()">リセット</button>
+  </div>
+  <div id="progress-bar-wrap"><div id="progress-bar" style="width:0%"></div></div>
+  <div id="progress-label">0 / 0 完了 (0%)</div>
+</div>
+
+<div id="tabs"></div>
+<div id="list-wrap"></div>
+<div id="complete-msg">✅ 準備完了！いってらっしゃい 🌾</div>
+
+<script>
+const categories = [
+  { id:"sakuyo", label:"作業用", emoji:"🌾", color:"#5a6878",
+    items:["下着上下 × 1","靴下 × 2","レギンス × 1","Tシャツ × 1","長Tシャツ × 1","作業ズボン × 2","作業パーカー × 2","手拭い帽子","手ぬぐい × 4","救急セット","帽子","合羽","長靴","かっぽう着","手袋"] },
+  { id:"onsen", label:"温泉用", emoji:"♨️", color:"#7a8c6e",
+    items:["下着上下 × 1","レギンス × 1","Tシャツ × 1","長Tシャツ × 1","パジャマ上下","タオル × 3","ヘアバンド × 1","洗顔フォーム","化粧水","乳液","ヘアブラシ","髪留めゴム"] },
+  { id:"neru", label:"寝る時用", emoji:"🌙", color:"#6b7a99",
+    items:["毛布 or 掛布団","枕","マスク","アイマスク","スマホ充電器","歯ブラシ","日焼け止め"] },
+  { id:"kaeri", label:"帰りに着る分", emoji:"🚗", color:"#8c7a6e",
+    items:["下着上下 × 1","レギンス × 1","長袖ワンピース × 1","羽織り × 1"] },
+  { id:"asa", label:"朝着る分", emoji:"🌅", color:"#a08060",
+    items:["靴下 × 1","レギンス × 1","Tシャツ × 1","長Tシャツ × 1","作業ズボン × 1","作業パーカー × 1"] },
+  { id:"kago", label:"カゴの中", emoji:"🧺", color:"#7a6e8c",
+    items:["水筒","インスタントコーヒー","サプリ","プロテイン","クリアレモン","おやつ","醤油","味噌","塩","砂糖","白だし","エサンテ","シェイカー","スポーツドリンク"] },
+];
+
+// --- State ---
+let state = loadState();
+let activeTab = "all";
+let forceOpen = new Set();
+
+function loadState() {
+  try {
+    const s = localStorage.getItem("tanbo_checklist");
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return initState();
+}
+
+function initState() {
+  const checked = {}, freeText = {}, freeChecked = {};
+  categories.forEach(cat => {
+    cat.items.forEach((_, i) => { checked[`${cat.id}-${i}`] = false; });
+    freeText[cat.id] = "";
+    freeChecked[cat.id] = false;
+  });
+  return { checked, freeText, freeChecked };
+}
+
+function saveState() {
+  try { localStorage.setItem("tanbo_checklist", JSON.stringify(state)); } catch(e) {}
+}
+
+function hasFree(id) { return state.freeText[id].trim().length > 0; }
+
+function catProgress(cat) {
+  const keys = cat.items.map((_, i) => `${cat.id}-${i}`);
+  const done = keys.filter(k => state.checked[k]).length + (hasFree(cat.id) && state.freeChecked[cat.id] ? 1 : 0);
+  const total = keys.length + (hasFree(cat.id) ? 1 : 0);
+  return { done, total };
+}
+
+function isComplete(cat) {
+  const { done, total } = catProgress(cat);
+  return done === total && total > 0;
+}
+
+function isOpen(cat) {
+  if (isComplete(cat)) return forceOpen.has(cat.id);
+  return true;
+}
+
+// --- Render ---
+function render() {
+  renderTabs();
+  renderLists();
+  renderProgress();
+  saveState();
+}
+
+function renderProgress() {
+  let total = 0, done = 0;
+  categories.forEach(cat => {
+    const p = catProgress(cat);
+    total += p.total;
+    done += p.done;
+  });
+  // 固定アイテム数を基準に（freeTextなし状態）
+  const fixedTotal = categories.reduce((s, c) => s + c.items.length, 0);
+  const freeTotal = categories.filter(c => hasFree(c.id)).length;
+  const allTotal = fixedTotal + freeTotal;
+  const allDone = Object.values(state.checked).filter(Boolean).length
+    + categories.filter(c => hasFree(c.id) && state.freeChecked[c.id]).length;
+  const pct = allTotal === 0 ? 0 : Math.round(allDone / allTotal * 100);
+  const bar = document.getElementById("progress-bar");
+  bar.style.width = pct + "%";
+  bar.style.background = pct === 100 ? "#a8c89a" : "#c8b87a";
+  document.getElementById("progress-label").textContent = `${allDone} / ${allTotal} 完了 (${pct}%)`;
+  document.getElementById("complete-msg").style.display = pct === 100 ? "block" : "none";
+}
+
+function renderTabs() {
+  const wrap = document.getElementById("tabs");
+  wrap.innerHTML = "";
+
+  const allBtn = document.createElement("button");
+  allBtn.className = "tab-btn" + (activeTab === "all" ? " active" : "");
+  allBtn.style.background = activeTab === "all" ? "#3d4a3a" : "#fff";
+  allBtn.style.color = activeTab === "all" ? "#fff" : "#555";
+  allBtn.style.borderColor = activeTab === "all" ? "#3d4a3a" : "#ddd";
+  allBtn.textContent = "すべて";
+  allBtn.onclick = () => { activeTab = "all"; render(); };
+  wrap.appendChild(allBtn);
+
+  categories.forEach(cat => {
+    const { done, total } = catProgress(cat);
+    const complete = isComplete(cat);
+    const isActive = activeTab === cat.id;
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (isActive ? " active" : "") + (complete && !isActive ? " done-tab" : "");
+    btn.style.background = isActive ? cat.color : "#fff";
+    btn.style.color = isActive ? "#fff" : "#555";
+    btn.style.borderColor = isActive ? cat.color : "#ddd";
+    btn.innerHTML = `${cat.emoji} ${cat.label} <span class="tab-sub">${done}/${total}</span>${complete ? " ✓" : ""}`;
+    btn.onclick = () => { activeTab = cat.id; render(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderLists() {
+  const wrap = document.getElementById("list-wrap");
+  wrap.innerHTML = "";
+  const visible = activeTab === "all" ? categories : categories.filter(c => c.id === activeTab);
+
+  visible.forEach(cat => {
+    const { done, total } = catProgress(cat);
+    const complete = isComplete(cat);
+    const open = isOpen(cat);
+
+    const block = document.createElement("div");
+    block.className = "cat-block";
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "cat-header" + (complete ? " complete" : "");
+    if (complete) {
+      header.style.background = cat.color;
+      header.style.marginBottom = "0";
+    }
+    header.innerHTML = `
+      <span style="font-size:18px">${cat.emoji}</span>
+      <span class="cat-label" style="color:${complete ? "#fff" : cat.color}">${cat.label}</span>
+      ${complete ? `<span class="cat-done-badge">✓ 完了</span>` : ""}
+      <span class="cat-count" style="${complete ? "color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.2)" : ""}">${done}/${total}</span>
+      <span class="cat-arrow${open ? "" : " closed"}" style="color:${complete ? "rgba(255,255,255,0.7)" : "#aaa"}">▼</span>
+    `;
+    header.onclick = () => {
+      if (isOpen(cat)) forceOpen.delete(cat.id); else forceOpen.add(cat.id);
+      render();
+    };
+    block.appendChild(header);
+
+    // Items
+    const itemsWrap = document.createElement("div");
+    itemsWrap.className = "cat-items" + (open ? "" : " hidden");
+
+    cat.items.forEach((item, i) => {
+      const key = `${cat.id}-${i}`;
+      const checked = state.checked[key];
+      const row = document.createElement("div");
+      row.className = "item-row" + (checked ? " checked-row" : "");
+      row.innerHTML = `
+        <div class="chk${checked ? " checked" : ""}" style="--cat-color:${cat.color}">
+          <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+            <path d="M1 5L5 9L12 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="item-label${checked ? " checked-label" : ""}">${item}</span>
+      `;
+      row.onclick = () => {
+        state.checked[key] = !state.checked[key];
+        forceOpen.delete(cat.id);
+        render();
+      };
+      itemsWrap.appendChild(row);
+    });
+
+    // Free input row
+    const freeRow = document.createElement("div");
+    freeRow.className = "free-row";
+    const freeChk = document.createElement("div");
+    freeChk.className = "chk" + (state.freeChecked[cat.id] ? " checked" : "") + (!hasFree(cat.id) ? " disabled" : "");
+    freeChk.style.setProperty("--cat-color", cat.color);
+    freeChk.innerHTML = `<svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1 5L5 9L12 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    freeChk.onclick = (e) => {
+      e.stopPropagation();
+      if (!hasFree(cat.id)) return;
+      state.freeChecked[cat.id] = !state.freeChecked[cat.id];
+      forceOpen.delete(cat.id);
+      render();
+    };
+
+    const freeInput = document.createElement("input");
+    freeInput.type = "text";
+    freeInput.placeholder = "追加メモ…";
+    freeInput.value = state.freeText[cat.id];
+    freeInput.className = "free-input" + (state.freeChecked[cat.id] ? " checked-free" : "");
+    freeInput.oninput = (e) => {
+      state.freeText[cat.id] = e.target.value;
+      if (!e.target.value.trim()) state.freeChecked[cat.id] = false;
+      forceOpen.delete(cat.id);
+      render();
+      // フォーカスを維持（renderで再描画されるため再フォーカス）
+      setTimeout(() => {
+        const inputs = document.querySelectorAll(".free-input");
+        const idx = [...document.querySelectorAll(".cat-block")].findIndex(b => b.contains(freeRow));
+        // 対応するinputを探してfocus & カーソル位置を復元
+        const allFreeInputs = document.querySelectorAll(".free-input");
+        const catIdx = visible.findIndex(c => c.id === cat.id);
+        if (allFreeInputs[catIdx]) {
+          allFreeInputs[catIdx].focus();
+          const len = allFreeInputs[catIdx].value.length;
+          allFreeInputs[catIdx].setSelectionRange(len, len);
+        }
+      }, 0);
+    };
+
+    freeRow.appendChild(freeChk);
+    freeRow.appendChild(freeInput);
+    itemsWrap.appendChild(freeRow);
+    block.appendChild(itemsWrap);
+    wrap.appendChild(block);
+  });
+}
+
+function resetAll() {
+  if (!confirm("チェックをすべてリセットしますか？")) return;
+  state = initState();
+  forceOpen = new Set();
+  render();
+}
+
+// 初回描画
+render();
+</script>
+</body>
+</html>
