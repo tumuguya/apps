@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="やどりま持ち物">
+<title>🏡 やどりま持ち物チェックリスト</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: #f0ede6; min-height: 100vh; padding-bottom: 80px; }
+
+  #header {
+    background: #4a3f35; color: #ede5d8;
+    padding: 20px 20px 16px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  #header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  #header-sub { font-size: 11px; letter-spacing: 3px; opacity: 0.7; margin-bottom: 2px; }
+  #header-title { font-size: 18px; font-weight: 700; }
+  #reset-btn {
+    background: rgba(255,255,255,0.12); border: none; color: #ede5d8;
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+  }
+  #progress-bar-wrap { background: rgba(255,255,255,0.15); border-radius: 99px; height: 8px; overflow: hidden; }
+  #progress-bar { height: 100%; background: #c8a87a; border-radius: 99px; transition: width 0.3s ease, background 0.3s; }
+  #progress-label { font-size: 11px; margin-top: 5px; opacity: 0.8; text-align: right; }
+
+  #tabs {
+    display: flex; overflow-x: auto; gap: 6px; padding: 12px 16px;
+    background: #e8e0d0; border-bottom: 1px solid #d5cab8;
+    scrollbar-width: none;
+  }
+  #tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0; background: #fff; color: #555;
+    border: 1.5px solid #ddd; border-radius: 99px;
+    padding: 5px 14px; font-size: 12px; cursor: pointer;
+    font-family: inherit; display: flex; align-items: center; gap: 4px;
+    white-space: nowrap;
+  }
+  .tab-btn.active { color: #fff; }
+  .tab-btn.done-tab { opacity: 0.6; }
+  .tab-sub { font-size: 10px; opacity: 0.8; }
+
+  #list-wrap { padding: 16px; }
+
+  .cat-block { margin-bottom: 16px; }
+  .cat-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    cursor: pointer; user-select: none; border-radius: 10px;
+    padding: 2px; transition: all 0.2s;
+  }
+  .cat-header.complete { padding: 10px 14px; margin-bottom: 0; }
+  .cat-label { font-weight: 700; font-size: 15px; transition: color 0.2s; }
+  .cat-done-badge { font-size: 12px; color: rgba(255,255,255,0.85); margin-left: 4px; }
+  .cat-count {
+    margin-left: auto; font-size: 12px; color: #888;
+    background: #ddd6c8; border-radius: 99px; padding: 2px 10px;
+    transition: all 0.2s;
+  }
+  .cat-arrow {
+    font-size: 12px; color: #aaa; margin-left: 6px;
+    display: inline-block; transition: transform 0.2s;
+  }
+  .cat-arrow.closed { transform: rotate(-90deg); }
+
+  .cat-items {
+    background: #fff; border-radius: 12px;
+    overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  .cat-items.hidden { display: none; }
+
+  .item-row {
+    display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+    border-bottom: 1px solid #f0ebe0; cursor: pointer;
+    background: #fff; transition: background 0.15s;
+  }
+  .item-row.checked-row { background: #f8f5ee; }
+
+  .chk {
+    width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+    border: 2px solid #ccc; background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .chk.checked { border-color: var(--cat-color); background: var(--cat-color); }
+  .chk svg { display: none; }
+  .chk.checked svg { display: block; }
+
+  .item-label { font-size: 14px; color: #333; transition: color 0.15s; }
+  .item-label.checked-label { color: #aaa; text-decoration: line-through; }
+
+  .free-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; background: #faf8f4;
+    border-bottom: 1px solid #f0ebe0;
+  }
+  .free-row:last-child { border-bottom: none; }
+  .chk.disabled { opacity: 0.35; cursor: default; }
+  .free-input {
+    flex: 1; border: none; outline: none; font-size: 14px;
+    background: transparent; font-family: inherit; color: #666;
+  }
+  .free-input.checked-free { color: #aaa; text-decoration: line-through; }
+
+  .free-controls {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 16px; background: #f5f2eb;
+    border-top: 1px solid #ede8de;
+  }
+  .free-count-btn {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1.5px solid #ccc; background: #fff;
+    color: #555; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1; padding: 0; font-family: inherit;
+  }
+  .free-count-label { font-size: 12px; color: #888; min-width: 40px; text-align: center; }
+
+  #complete-msg {
+    text-align: center; padding: 20px;
+    color: #6a7a50; font-weight: 700; font-size: 16px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-top">
+    <div>
+      <div id="header-sub">やどりま（赤塩の家）</div>
+      <div id="header-title">🏡 持ち物チェックリスト</div>
+    </div>
+    <button id="reset-btn" onclick="resetAll()">リセット</button>
+  </div>
+  <div id="progress-bar-wrap"><div id="progress-bar" style="width:0%"></div></div>
+  <div id="progress-label">0 / 0 完了 (0%)</div>
+</div>
+
+<div id="tabs"></div>
+<div id="list-wrap"></div>
+<div id="complete-msg">✅ 準備完了！いってらっしゃい 🏡</div>
+
+<script>
+const categories = [
+  { id:"shukuhaku", label:"宿泊用", emoji:"🧳", color:"#6a7a8c",
+    items:["下着上下","靴下","レギンス","Tシャツ","上着","ズボン"],
+    freeCount: 1 },
+  { id:"ofuro", label:"お風呂用", emoji:"♨️", color:"#7a8c6e",
+    items:["タオル","ヘアバンド","クレンジング","洗顔フォーム","シャンプー","リンス","ボディソープ","化粧水","乳液","歯ブラシセット","部屋着上下"],
+    freeCount: 1 },
+  { id:"neru", label:"寝る時用", emoji:"🌙", color:"#6b7a99",
+    items:["寝袋","シーツ","タオルケット or 毛布","上掛布団","枕","パジャマ上下","マスク","アイマスク","スマホ充電器"],
+    freeCount: 1 },
+  { id:"kago", label:"カゴ", emoji:"🧺", color:"#7a6e8c",
+    items:["水筒","サプリ","プロテイン","おやつ","シェイカー"],
+    freeCount: 0 },
+  { id:"kaimono", label:"買い物", emoji:"🛒", color:"#8c7a5a",
+    items:[], freeCount: 1, freeMax: 10 },
+  { id:"sonota", label:"その他", emoji:"📝", color:"#5a7a6e",
+    items:[], freeCount: 1, freeMax: 10 },
+];
+
+// --- State ---
+let state = loadState();
+let activeTab = "all";
+let forceOpen = new Set();
+
+function loadState() {
+  try {
+    const s = localStorage.getItem("yadori_checklist");
+    if (s) {
+      const parsed = JSON.parse(s);
+      // 不足フィールドを補完
+      categories.forEach(cat => {
+        if (!parsed.freeTexts) parsed.freeTexts = {};
+        if (!parsed.freeChecks) parsed.freeChecks = {};
+        if (!parsed.freeCounts) parsed.freeCounts = {};
+        if (!parsed.freeTexts[cat.id]) parsed.freeTexts[cat.id] = [""];
+        if (!parsed.freeChecks[cat.id]) parsed.freeChecks[cat.id] = [false];
+        if (parsed.freeCounts[cat.id] === undefined) parsed.freeCounts[cat.id] = cat.freeCount;
+      });
+      return parsed;
+    }
+  } catch(e) {}
+  return initState();
+}
+
+function initState() {
+  const checked = {}, freeTexts = {}, freeChecks = {}, freeCounts = {};
+  categories.forEach(cat => {
+    cat.items.forEach((_, i) => { checked[`${cat.id}-${i}`] = false; });
+    const n = cat.freeCount || 0;
+    freeTexts[cat.id] = Array(Math.max(n,1)).fill("");
+    freeChecks[cat.id] = Array(Math.max(n,1)).fill(false);
+    freeCounts[cat.id] = n;
+  });
+  return { checked, freeTexts, freeChecks, freeCounts };
+}
+
+function saveState() {
+  try { localStorage.setItem("yadori_checklist", JSON.stringify(state)); } catch(e) {}
+}
+
+function hasFreeItem(id, idx) { return state.freeTexts[id][idx] && state.freeTexts[id][idx].trim().length > 0; }
+
+function catProgress(cat) {
+  const keys = cat.items.map((_, i) => `${cat.id}-${i}`);
+  const fixedDone = keys.filter(k => state.checked[k]).length;
+  const freeCount = state.freeCounts[cat.id] || 0;
+  let freeDone = 0, freeTotal = 0;
+  for (let i = 0; i < freeCount; i++) {
+    if (hasFreeItem(cat.id, i)) { freeTotal++; if (state.freeChecks[cat.id][i]) freeDone++; }
+  }
+  return { done: fixedDone + freeDone, total: keys.length + freeTotal };
+}
+
+function isComplete(cat) {
+  const { done, total } = catProgress(cat);
+  return done === total && total > 0;
+}
+
+function isOpen(cat) {
+  if (isComplete(cat)) return forceOpen.has(cat.id);
+  return true;
+}
+
+function render() { renderTabs(); renderLists(); renderProgress(); saveState(); }
+
+function renderProgress() {
+  let allTotal = 0, allDone = 0;
+  categories.forEach(cat => {
+    const p = catProgress(cat);
+    allTotal += p.total;
+    allDone += p.done;
+  });
+  const pct = allTotal === 0 ? 0 : Math.round(allDone / allTotal * 100);
+  const bar = document.getElementById("progress-bar");
+  bar.style.width = pct + "%";
+  bar.style.background = pct === 100 ? "#a8c89a" : "#c8a87a";
+  document.getElementById("progress-label").textContent = `${allDone} / ${allTotal} 完了 (${pct}%)`;
+  document.getElementById("complete-msg").style.display = pct === 100 ? "block" : "none";
+}
+
+function renderTabs() {
+  const wrap = document.getElementById("tabs");
+  wrap.innerHTML = "";
+  const allBtn = document.createElement("button");
+  allBtn.className = "tab-btn" + (activeTab === "all" ? " active" : "");
+  allBtn.style.cssText = `background:${activeTab==="all"?"#4a3f35":"#fff"};color:${activeTab==="all"?"#fff":"#555"};border-color:${activeTab==="all"?"#4a3f35":"#ddd"}`;
+  allBtn.textContent = "すべて";
+  allBtn.onclick = () => { activeTab = "all"; render(); };
+  wrap.appendChild(allBtn);
+
+  categories.forEach(cat => {
+    const { done, total } = catProgress(cat);
+    const complete = isComplete(cat);
+    const isActive = activeTab === cat.id;
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (isActive?" active":"") + (complete&&!isActive?" done-tab":"");
+    btn.style.cssText = `background:${isActive?cat.color:"#fff"};color:${isActive?"#fff":"#555"};border-color:${isActive?cat.color:"#ddd"}`;
+    btn.innerHTML = `${cat.emoji} ${cat.label} <span class="tab-sub">${done}/${total}</span>${complete?" ✓":""}`;
+    btn.onclick = () => { activeTab = cat.id; render(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function renderLists() {
+  const wrap = document.getElementById("list-wrap");
+  wrap.innerHTML = "";
+  const visible = activeTab === "all" ? categories : categories.filter(c => c.id === activeTab);
+
+  visible.forEach(cat => {
+    const { done, total } = catProgress(cat);
+    const complete = isComplete(cat);
+    const open = isOpen(cat);
+    const freeMax = cat.freeMax || 1;
+    const freeCount = state.freeCounts[cat.id] || 0;
+
+    const block = document.createElement("div");
+    block.className = "cat-block";
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "cat-header" + (complete ? " complete" : "");
+    if (complete) { header.style.background = cat.color; header.style.marginBottom = "0"; }
+    header.innerHTML = `
+      <span style="font-size:18px">${cat.emoji}</span>
+      <span class="cat-label" style="color:${complete?"#fff":cat.color}">${cat.label}</span>
+      ${complete?`<span class="cat-done-badge">✓ 完了</span>`:""}
+      <span class="cat-count" style="${complete?"color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.2)":""}">${done}/${total}</span>
+      <span class="cat-arrow${open?"":" closed"}" style="color:${complete?"rgba(255,255,255,0.7)":"#aaa"}">▼</span>
+    `;
+    header.onclick = () => {
+      if (isOpen(cat)) forceOpen.delete(cat.id); else forceOpen.add(cat.id);
+      render();
+    };
+    block.appendChild(header);
+
+    // Items wrap
+    const itemsWrap = document.createElement("div");
+    itemsWrap.className = "cat-items" + (open ? "" : " hidden");
+
+    // Fixed items
+    cat.items.forEach((item, i) => {
+      const key = `${cat.id}-${i}`;
+      const checked = state.checked[key];
+      const row = document.createElement("div");
+      row.className = "item-row" + (checked ? " checked-row" : "");
+      row.innerHTML = `
+        <div class="chk${checked?" checked":""}" style="--cat-color:${cat.color}">
+          <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+            <path d="M1 5L5 9L12 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="item-label${checked?" checked-label":""}">${item}</span>
+      `;
+      row.onclick = () => { state.checked[key] = !state.checked[key]; forceOpen.delete(cat.id); render(); };
+      itemsWrap.appendChild(row);
+    });
+
+    // Free input rows
+    for (let fi = 0; fi < freeCount; fi++) {
+      ((idx) => {
+        const freeRow = document.createElement("div");
+        freeRow.className = "free-row";
+
+        const freeChk = document.createElement("div");
+        const isFC = state.freeChecks[cat.id][idx];
+        const hasVal = hasFreeItem(cat.id, idx);
+        freeChk.className = "chk" + (isFC?" checked":"") + (!hasVal?" disabled":"");
+        freeChk.style.setProperty("--cat-color", cat.color);
+        freeChk.innerHTML = `<svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1 5L5 9L12 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        freeChk.onclick = (e) => {
+          e.stopPropagation();
+          if (!hasFreeItem(cat.id, idx)) return;
+          state.freeChecks[cat.id][idx] = !state.freeChecks[cat.id][idx];
+          forceOpen.delete(cat.id);
+          render();
+        };
+
+        const freeInput = document.createElement("input");
+        freeInput.type = "text";
+        freeInput.placeholder = `追加メモ ${freeCount > 1 ? idx+1 : ""}…`.trim();
+        freeInput.value = state.freeTexts[cat.id][idx] || "";
+        freeInput.className = "free-input" + (isFC ? " checked-free" : "");
+        freeInput.oninput = (e) => {
+          const val = e.target.value;
+          state.freeTexts[cat.id][idx] = val;
+          if (!val.trim()) state.freeChecks[cat.id][idx] = false;
+          forceOpen.delete(cat.id);
+          freeInput.className = "free-input" + (state.freeChecks[cat.id][idx] ? " checked-free" : "");
+          freeChk.className = "chk" + (state.freeChecks[cat.id][idx] ? " checked" : "") + (!val.trim() ? " disabled" : "");
+          renderProgress();
+          renderTabs();
+          saveState();
+        };
+
+        freeRow.appendChild(freeChk);
+        freeRow.appendChild(freeInput);
+        itemsWrap.appendChild(freeRow);
+      })(fi);
+    }
+
+    // 買い物・その他：行数増減コントロール
+    if (cat.freeMax && cat.freeMax > 1) {
+      const ctrl = document.createElement("div");
+      ctrl.className = "free-controls";
+      const minusBtn = document.createElement("button");
+      minusBtn.className = "free-count-btn";
+      minusBtn.textContent = "−";
+      minusBtn.onclick = () => {
+        if (state.freeCounts[cat.id] <= 1) return;
+        state.freeCounts[cat.id]--;
+        forceOpen.delete(cat.id);
+        render();
+      };
+      const label = document.createElement("span");
+      label.className = "free-count-label";
+      label.textContent = `${freeCount} / ${freeMax} 行`;
+      const plusBtn = document.createElement("button");
+      plusBtn.className = "free-count-btn";
+      plusBtn.textContent = "+";
+      plusBtn.onclick = () => {
+        if (state.freeCounts[cat.id] >= freeMax) return;
+        state.freeCounts[cat.id]++;
+        if (!state.freeTexts[cat.id][state.freeCounts[cat.id]-1]) {
+          state.freeTexts[cat.id][state.freeCounts[cat.id]-1] = "";
+          state.freeChecks[cat.id][state.freeCounts[cat.id]-1] = false;
+        }
+        forceOpen.delete(cat.id);
+        render();
+      };
+      ctrl.appendChild(minusBtn);
+      ctrl.appendChild(label);
+      ctrl.appendChild(plusBtn);
+      itemsWrap.appendChild(ctrl);
+    }
+
+    block.appendChild(itemsWrap);
+    wrap.appendChild(block);
+  });
+}
+
+function resetAll() {
+  if (!confirm("チェックをすべてリセットしますか？")) return;
+  state = initState();
+  forceOpen = new Set();
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
