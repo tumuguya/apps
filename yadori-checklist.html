@@ -177,6 +177,7 @@ function loadState() {
     if (s) {
       const parsed = JSON.parse(s);
       // 不足フィールドを補完
+      if (!parsed.count) parsed.count = {};
       categories.forEach(cat => {
         if (!parsed.freeTexts) parsed.freeTexts = {};
         if (!parsed.freeChecks) parsed.freeChecks = {};
@@ -184,6 +185,7 @@ function loadState() {
         if (!parsed.freeTexts[cat.id]) parsed.freeTexts[cat.id] = [""];
         if (!parsed.freeChecks[cat.id]) parsed.freeChecks[cat.id] = [false];
         if (parsed.freeCounts[cat.id] === undefined) parsed.freeCounts[cat.id] = cat.freeCount;
+        if (parsed.count[cat.id] === undefined) parsed.count[cat.id] = 1;
       });
       return parsed;
     }
@@ -192,15 +194,16 @@ function loadState() {
 }
 
 function initState() {
-  const checked = {}, freeTexts = {}, freeChecks = {}, freeCounts = {};
+  const checked = {}, freeTexts = {}, freeChecks = {}, freeCounts = {}, count = {};
   categories.forEach(cat => {
     cat.items.forEach((_, i) => { checked[`${cat.id}-${i}`] = false; });
     const n = cat.freeCount || 0;
     freeTexts[cat.id] = Array(Math.max(n,1)).fill("");
     freeChecks[cat.id] = Array(Math.max(n,1)).fill(false);
     freeCounts[cat.id] = n;
+    count[cat.id] = 1;
   });
-  return { checked, freeTexts, freeChecks, freeCounts };
+  return { checked, freeTexts, freeChecks, freeCounts, count };
 }
 
 function saveState() {
@@ -289,10 +292,18 @@ function renderLists() {
     const header = document.createElement("div");
     header.className = "cat-header" + (complete ? " complete" : "");
     if (complete) { header.style.background = cat.color; header.style.marginBottom = "0"; }
+    const countVal = state.count[cat.id] || 1;
+    const showPager = ["shukuhaku","neru"].includes(cat.id);
     header.innerHTML = `
       <span style="font-size:18px">${cat.emoji}</span>
       <span class="cat-label" style="color:${complete?"#fff":cat.color}">${cat.label}</span>
       ${complete?`<span class="cat-done-badge">✓ 完了</span>`:""}
+      ${showPager ? `
+      <span class="pager" style="display:flex;align-items:center;gap:4px;margin-left:8px;" onclick="event.stopPropagation()">
+        <button class="pager-btn" data-cat="${cat.id}" data-dir="-1" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${complete?'rgba(255,255,255,0.5)':'#ccc'};background:${complete?'rgba(255,255,255,0.15)':'#f0ede6'};color:${complete?'#fff':'#555'};font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">−</button>
+        <span style="font-size:13px;font-weight:700;min-width:14px;text-align:center;color:${complete?'#fff':'#555'}">${countVal}</span>
+        <button class="pager-btn" data-cat="${cat.id}" data-dir="1" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${complete?'rgba(255,255,255,0.5)':'#ccc'};background:${complete?'rgba(255,255,255,0.15)':'#f0ede6'};color:${complete?'#fff':'#555'};font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;">+</button>
+      </span>` : ""}
       <span class="cat-count" style="${complete?"color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.2)":""}">${done}/${total}</span>
       <span class="cat-arrow${open?"":" closed"}" style="color:${complete?"rgba(255,255,255,0.7)":"#aaa"}">▼</span>
     `;
@@ -300,6 +311,15 @@ function renderLists() {
       if (isOpen(cat)) forceOpen.delete(cat.id); else forceOpen.add(cat.id);
       render();
     };
+    header.querySelectorAll('.pager-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const dir = parseInt(btn.dataset.dir);
+        const cur = state.count[btn.dataset.cat] || 1;
+        state.count[btn.dataset.cat] = Math.min(5, Math.max(1, cur + dir));
+        render();
+      };
+    });
     block.appendChild(header);
 
     // Items wrap
@@ -312,13 +332,17 @@ function renderLists() {
       const checked = state.checked[key];
       const row = document.createElement("div");
       row.className = "item-row" + (checked ? " checked-row" : "");
+      const showCnt = (cat.id === "shukuhaku" && state.count[cat.id] > 1)
+        || (cat.id === "neru" && item === "マスク" && state.count[cat.id] > 1);
+      const cntNum = state.count[cat.id] || 1;
+      const cntBadge = showCnt ? ` <span style="font-size:12px;color:${checked?'#bbb':'#a08060'};font-weight:600">×${cntNum}</span>` : "";
       row.innerHTML = `
         <div class="chk${checked?" checked":""}" style="--cat-color:${cat.color}">
           <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
             <path d="M1 5L5 9L12 1" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <span class="item-label${checked?" checked-label":""}">${item}</span>
+        <span class="item-label${checked?" checked-label":""}">${item}${cntBadge}</span>
       `;
       row.onclick = () => { state.checked[key] = !state.checked[key]; forceOpen.delete(cat.id); render(); };
       itemsWrap.appendChild(row);
