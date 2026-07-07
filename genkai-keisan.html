@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>販売価格 限界額 計算機</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --text: #222;
+    --sub: #666;
+    --line: #ddd;
+    --accent: #2f6f4f;
+    --accent2: #b34a3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Sans", "Yu Gothic", -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; }
+  h1 {
+    font-size: 1.15rem;
+    margin: 0 0 4px;
+  }
+  .lead {
+    color: var(--sub);
+    font-size: 0.85rem;
+    margin: 0 0 20px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 0.8rem;
+    color: var(--sub);
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+  .field {
+    margin-bottom: 14px;
+  }
+  .field:last-child { margin-bottom: 0; }
+  input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .unit {
+    font-size: 0.75rem;
+    color: var(--sub);
+    margin-left: 4px;
+  }
+  details {
+    margin-top: 4px;
+  }
+  summary {
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--sub);
+    padding: 6px 0;
+  }
+  .adj-grid {
+    display: grid;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .result {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+  }
+  .result:first-of-type { border-top: none; padding-top: 0; }
+  .result .label {
+    font-size: 0.9rem;
+  }
+  .result .sub {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--sub);
+    margin-top: 2px;
+  }
+  .result .value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .v1 { color: var(--accent); }
+  .v2 { color: var(--accent2); }
+  .note {
+    font-size: 0.75rem;
+    color: var(--sub);
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>販売価格 限界額 計算機</h1>
+  <p class="lead">仕入額を入力すると、①表面上の損益分岐点と②仮払消費税の還付分を含めた真の限界額を計算します。</p>
+
+  <div class="card">
+    <h2>仕入額</h2>
+    <div class="field">
+      <label for="a">仕入額(税込)<span class="unit">円</span></label>
+      <input type="number" id="a" value="38980" inputmode="numeric">
+    </div>
+
+    <details>
+      <summary>送料・手数料・消費税率を調整する</summary>
+      <div class="adj-grid">
+        <div class="field">
+          <label for="s">送料差額(設定送料 − 実送料)<span class="unit">円</span></label>
+          <input type="number" id="s" value="700" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label for="comm">販売手数料率<span class="unit">%</span></label>
+          <input type="number" id="comm" value="10.8" step="0.1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="tax">消費税率<span class="unit">%</span></label>
+          <input type="number" id="tax" value="10" step="0.1" inputmode="decimal">
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>計算結果</h2>
+    <div class="result">
+      <div class="label">① 表面上の損益分岐点
+        <span class="sub">仮払消費税を含めない基本の下限</span>
+      </div>
+      <div class="value v1" id="p1">-</div>
+    </div>
+    <div class="result">
+      <div class="label">② 真の限界額
+        <span class="sub">仮払消費税の還付分まで含めた最終防衛ライン</span>
+      </div>
+      <div class="value v2" id="p2">-</div>
+    </div>
+  </div>
+
+  <p class="note">
+    ①は通常運用時の下限、②はこれ以上絶対に下げられない最終ラインです。<br>
+    式: P1=(a−S)/(1−手数料率)、P2=(a÷(1+消費税率)−S)/(1−手数料率)
+  </p>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const fmt = n => isFinite(n) ? Math.round(n).toLocaleString('ja-JP') + '円' : '-';
+
+  function calc() {
+    const a = parseFloat($('a').value) || 0;
+    const s = parseFloat($('s').value) || 0;
+    const comm = (parseFloat($('comm').value) || 0) / 100;
+    const tax = (parseFloat($('tax').value) || 0) / 100;
+
+    const p1 = (a - s) / (1 - comm);
+    const netCost = a / (1 + tax);
+    const p2 = (netCost - s) / (1 - comm);
+
+    $('p1').textContent = fmt(p1);
+    $('p2').textContent = fmt(p2);
+  }
+
+  ['a', 's', 'comm', 'tax'].forEach(id => $(id).addEventListener('input', calc));
+  calc();
+</script>
+</body>
+</html>
