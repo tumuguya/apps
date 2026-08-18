@@ -120,6 +120,27 @@
     padding-top: 10px;
     border-top: 1px dashed var(--line);
   }
+  .rate-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rate-row input { flex: 1; }
+  .rate-status {
+    font-size: 0.72rem;
+    color: var(--sub);
+    margin-top: 6px;
+  }
+  .rate-status.ok { color: var(--accent); }
+  .rate-status.err { color: var(--accent2); }
+  .krw {
+    font-size: 1.5rem;
+  }
+  .jpy-sub {
+    font-size: 0.72rem;
+    color: var(--sub);
+    margin-top: 2px;
+  }
 </style>
 </head>
 <body>
@@ -154,47 +175,84 @@
   </div>
 
   <div class="card">
-    <h2>計算結果</h2>
+    <h2>為替レート(円→ウォン)</h2>
+    <div class="rate-row">
+      <input type="number" id="rate" value="" step="0.01" inputmode="decimal">
+      <span class="unit">ウォン/円</span>
+    </div>
+    <div class="rate-status" id="rateStatus">レート取得中…</div>
+  </div>
+
+  <div class="card">
+    <h2>計算結果(ウォン表示・円は参考)</h2>
     <div class="result">
       <div class="label">① 表面上の損益分岐点
         <span class="sub">仮払消費税を含めない基本の下限</span>
       </div>
-      <div class="value v1" id="p1">-</div>
+      <div>
+        <div class="value v1 krw" id="p1krw">-</div>
+        <div class="jpy-sub" id="p1jpy">-</div>
+      </div>
     </div>
     <div class="result">
       <div class="label">② 真の限界額
         <span class="sub">仮払消費税の還付分まで含めた最終防衛ライン</span>
       </div>
-      <div class="value v2" id="p2">-</div>
+      <div>
+        <div class="value v2 krw" id="p2krw">-</div>
+        <div class="jpy-sub" id="p2jpy">-</div>
+      </div>
     </div>
   </div>
 
   <p class="note">
     ①は通常運用時の下限、②はこれ以上絶対に下げられない最終ラインです。<br>
-    式: P1=(a−S)/(1−手数料率)、P2=(a÷(1+消費税率)−S)/(1−手数料率)
+    式: P1=(a−S)/(1−手数料率)、P2=(a÷(1+消費税率)−S)/(1−手数料率)<br>
+    ウォン表示 = 円の結果 × 為替レート。レートは自動取得(失敗時は手入力してください)。
   </p>
 </div>
 
 <script>
   const $ = id => document.getElementById(id);
-  const fmt = n => isFinite(n) ? Math.round(n).toLocaleString('ja-JP') + '円' : '-';
+  const fmtJPY = n => isFinite(n) ? Math.round(n).toLocaleString('ja-JP') + '円' : '-';
+  const fmtKRW = n => isFinite(n) ? Math.round(n).toLocaleString('ko-KR') + 'ウォン' : '-';
 
   function calc() {
     const a = parseFloat($('a').value) || 0;
     const s = parseFloat($('s').value) || 0;
     const comm = (parseFloat($('comm').value) || 0) / 100;
     const tax = (parseFloat($('tax').value) || 0) / 100;
+    const rate = parseFloat($('rate').value) || 0;
 
     const p1 = (a - s) / (1 - comm);
     const netCost = a / (1 + tax);
     const p2 = (netCost - s) / (1 - comm);
 
-    $('p1').textContent = fmt(p1);
-    $('p2').textContent = fmt(p2);
+    $('p1jpy').textContent = '(' + fmtJPY(p1) + ')';
+    $('p2jpy').textContent = '(' + fmtJPY(p2) + ')';
+    $('p1krw').textContent = rate > 0 ? fmtKRW(p1 * rate) : '為替レートを入力してください';
+    $('p2krw').textContent = rate > 0 ? fmtKRW(p2 * rate) : '為替レートを入力してください';
   }
 
-  ['a', 's', 'comm', 'tax'].forEach(id => $(id).addEventListener('input', calc));
-  calc();
+  async function fetchRate() {
+    const status = $('rateStatus');
+    try {
+      const res = await fetch('https://open.er-api.com/v6/latest/JPY');
+      const data = await res.json();
+      const krwRate = data.rates && data.rates.KRW;
+      if (!krwRate) throw new Error('KRWレートが見つかりません');
+      $('rate').value = krwRate.toFixed(4);
+      status.textContent = '自動取得成功(取得日時: ' + (data.time_last_update_utc || '不明') + ')';
+      status.className = 'rate-status ok';
+    } catch (e) {
+      status.textContent = '自動取得に失敗しました。上の欄に手動でレートを入力してください。';
+      status.className = 'rate-status err';
+    }
+    calc();
+  }
+
+  ['a', 's', 'comm', 'tax', 'rate'].forEach(id => $(id).addEventListener('input', calc));
+  fetchRate();
 </script>
 </body>
 </html>
