@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>販売価格 限界額 計算機</title>
+<title>売値計算機</title>
 <style>
   :root {
     --bg: #fafafa;
@@ -12,7 +12,6 @@
     --sub: #666;
     --line: #ddd;
     --accent: #2f6f4f;
-    --accent2: #b34a3c;
   }
   * { box-sizing: border-box; }
   body {
@@ -23,7 +22,7 @@
     font-family: "Hiragino Sans", "Yu Gothic", -apple-system, sans-serif;
     line-height: 1.6;
   }
-  .wrap { max-width: 480px; margin: 0 auto; }
+  .wrap { max-width: 420px; margin: 0 auto; }
   h1 {
     font-size: 1.15rem;
     margin: 0 0 4px;
@@ -51,12 +50,7 @@
     display: block;
     font-size: 0.85rem;
     margin-bottom: 4px;
-    color: var(--text);
   }
-  .field {
-    margin-bottom: 14px;
-  }
-  .field:last-child { margin-bottom: 0; }
   input[type="number"] {
     width: 100%;
     padding: 10px 12px;
@@ -64,7 +58,6 @@
     border: 1px solid var(--line);
     border-radius: 8px;
     background: #fff;
-    -moz-appearance: textfield;
   }
   input[type="number"]:focus {
     outline: 2px solid var(--accent);
@@ -75,140 +68,72 @@
     color: var(--sub);
     margin-left: 4px;
   }
-  details {
-    margin-top: 4px;
+  .result-main {
+    text-align: center;
+    padding: 10px 0;
   }
-  summary {
-    cursor: pointer;
+  .result-main .krw {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .result-main .jpy-sub {
     font-size: 0.8rem;
     color: var(--sub);
-    padding: 6px 0;
+    margin-top: 4px;
   }
-  .adj-grid {
-    display: grid;
-    gap: 12px;
-    margin-top: 10px;
-  }
-  .result {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 14px 0;
-    border-top: 1px solid var(--line);
-  }
-  .result:first-of-type { border-top: none; padding-top: 0; }
-  .result .label {
-    font-size: 0.9rem;
-  }
-  .result .sub {
-    display: block;
-    font-size: 0.72rem;
+  .rate-status {
+    font-size: 0.7rem;
     color: var(--sub);
-    margin-top: 2px;
+    margin-top: 10px;
+    text-align: center;
   }
-  .result .value {
-    font-size: 1.3rem;
-    font-weight: 700;
-    white-space: nowrap;
+  .rate-status.ok { color: var(--accent); }
+  .rate-status.err { color: #b34a3c; }
+  .rate-manual {
+    margin-top: 10px;
+    text-align: center;
   }
-  .v1 { color: var(--accent); }
-  .v2 { color: var(--accent2); }
+  .rate-manual input {
+    width: 120px;
+    display: inline-block;
+    text-align: center;
+  }
   .note {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--sub);
     margin-top: 14px;
     padding-top: 10px;
     border-top: 1px dashed var(--line);
   }
-  .rate-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .rate-row input { flex: 1; }
-  .rate-status {
-    font-size: 0.72rem;
-    color: var(--sub);
-    margin-top: 6px;
-  }
-  .rate-status.ok { color: var(--accent); }
-  .rate-status.err { color: var(--accent2); }
-  .krw {
-    font-size: 1.5rem;
-  }
-  .jpy-sub {
-    font-size: 0.72rem;
-    color: var(--sub);
-    margin-top: 2px;
-  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>販売価格 限界額 計算機</h1>
-  <p class="lead">仕入額を入力すると、①表面上の損益分岐点と②仮払消費税の還付分を含めた真の限界額を計算します。</p>
+  <h1>売値計算機</h1>
+  <p class="lead">仕入れ値を入れると、送料と手数料を含めた最低売値をウォンで表示します。</p>
 
   <div class="card">
-    <h2>仕入額</h2>
-    <div class="field">
-      <label for="a">仕入額(税込)<span class="unit">円</span></label>
-      <input type="number" id="a" value="38980" inputmode="numeric">
-    </div>
-
-    <details>
-      <summary>送料・手数料・消費税率を調整する</summary>
-      <div class="adj-grid">
-        <div class="field">
-          <label for="s">送料差額(設定送料 − 実送料)<span class="unit">円</span></label>
-          <input type="number" id="s" value="700" inputmode="numeric">
-        </div>
-        <div class="field">
-          <label for="comm">販売手数料率<span class="unit">%</span></label>
-          <input type="number" id="comm" value="10.8" step="0.1" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label for="tax">消費税率<span class="unit">%</span></label>
-          <input type="number" id="tax" value="10" step="0.1" inputmode="decimal">
-        </div>
-      </div>
-    </details>
+    <label for="a">仕入れ値(日本円)</label>
+    <input type="number" id="a" value="38980" inputmode="numeric">
   </div>
 
   <div class="card">
-    <h2>為替レート(円→ウォン)</h2>
-    <div class="rate-row">
-      <input type="number" id="rate" value="" step="0.01" inputmode="decimal">
-      <span class="unit">ウォン/円</span>
+    <h2>最低売値</h2>
+    <div class="result-main">
+      <div class="krw" id="pkrw">-</div>
+      <div class="jpy-sub" id="pjpy">-</div>
     </div>
-    <div class="rate-status" id="rateStatus">レート取得中…</div>
-  </div>
-
-  <div class="card">
-    <h2>計算結果(ウォン表示・円は参考)</h2>
-    <div class="result">
-      <div class="label">① 表面上の損益分岐点
-        <span class="sub">仮払消費税を含めない基本の下限</span>
-      </div>
-      <div>
-        <div class="value v1 krw" id="p1krw">-</div>
-        <div class="jpy-sub" id="p1jpy">-</div>
-      </div>
-    </div>
-    <div class="result">
-      <div class="label">② 真の限界額
-        <span class="sub">仮払消費税の還付分まで含めた最終防衛ライン</span>
-      </div>
-      <div>
-        <div class="value v2 krw" id="p2krw">-</div>
-        <div class="jpy-sub" id="p2jpy">-</div>
-      </div>
+    <div class="rate-status" id="rateStatus">為替レート取得中…</div>
+    <div class="rate-manual">
+      <input type="number" id="rate" step="0.01" inputmode="decimal">
+      <span class="unit">ウォン/円(手動修正可)</span>
     </div>
   </div>
 
   <p class="note">
-    ①は通常運用時の下限、②はこれ以上絶対に下げられない最終ラインです。<br>
-    式: P1=(a−S)/(1−手数料率)、P2=(a÷(1+消費税率)−S)/(1−手数料率)<br>
-    ウォン表示 = 円の結果 × 為替レート。レートは自動取得(失敗時は手入力してください)。
+    計算式:売値(円) = (仕入れ値 + 1,200円) ÷ (1 − 0.108)<br>
+    送料1,200円・手数料10.8%で固定。ウォンは自動取得の為替レートで換算。
   </p>
 </div>
 
@@ -217,21 +142,16 @@
   const fmtJPY = n => isFinite(n) ? Math.round(n).toLocaleString('ja-JP') + '円' : '-';
   const fmtKRW = n => isFinite(n) ? Math.round(n).toLocaleString('ko-KR') + 'ウォン' : '-';
 
+  const SHIPPING = 1200;
+  const COMMISSION = 0.108;
+
   function calc() {
     const a = parseFloat($('a').value) || 0;
-    const s = parseFloat($('s').value) || 0;
-    const comm = (parseFloat($('comm').value) || 0) / 100;
-    const tax = (parseFloat($('tax').value) || 0) / 100;
     const rate = parseFloat($('rate').value) || 0;
+    const p = (a + SHIPPING) / (1 - COMMISSION);
 
-    const p1 = (a - s) / (1 - comm);
-    const netCost = a / (1 + tax);
-    const p2 = (netCost - s) / (1 - comm);
-
-    $('p1jpy').textContent = '(' + fmtJPY(p1) + ')';
-    $('p2jpy').textContent = '(' + fmtJPY(p2) + ')';
-    $('p1krw').textContent = rate > 0 ? fmtKRW(p1 * rate) : '為替レートを入力してください';
-    $('p2krw').textContent = rate > 0 ? fmtKRW(p2 * rate) : '為替レートを入力してください';
+    $('pjpy').textContent = '(' + fmtJPY(p) + ')';
+    $('pkrw').textContent = rate > 0 ? fmtKRW(p * rate) : '為替レートを入力してください';
   }
 
   async function fetchRate() {
@@ -245,13 +165,13 @@
       status.textContent = '自動取得成功(取得日時: ' + (data.time_last_update_utc || '不明') + ')';
       status.className = 'rate-status ok';
     } catch (e) {
-      status.textContent = '自動取得に失敗しました。上の欄に手動でレートを入力してください。';
+      status.textContent = '自動取得に失敗しました。下の欄に手動でレートを入力してください。';
       status.className = 'rate-status err';
     }
     calc();
   }
 
-  ['a', 's', 'comm', 'tax', 'rate'].forEach(id => $(id).addEventListener('input', calc));
+  ['a', 'rate'].forEach(id => $(id).addEventListener('input', calc));
   fetchRate();
 </script>
 </body>
