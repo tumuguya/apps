@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="マルシェ出店">
+<title>🎪 マルシェ出店リスト</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: #f5f0e8; min-height: 100vh; padding-bottom: 80px; color: #3a3a34; }
+
+  #header {
+    background: #3d4a3a; color: #e8e0cc;
+    padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 16px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  #header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
+  #header-sub { font-size: 11px; letter-spacing: 3px; opacity: 0.7; margin-bottom: 2px; }
+  #header-title { font-size: 18px; font-weight: 700; }
+  #header-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .hbtn {
+    background: rgba(255,255,255,0.12); border: none; color: #e8e0cc;
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+  }
+  #progress-bar-wrap { background: rgba(255,255,255,0.15); border-radius: 99px; height: 8px; overflow: hidden; }
+  #progress-bar { height: 100%; background: #c8b87a; border-radius: 99px; transition: width 0.3s; }
+  #progress-label { font-size: 12px; margin-top: 6px; opacity: 0.85; text-align: right; }
+
+  #tabs {
+    display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px;
+    background: #ebe4d4; position: sticky; top: var(--header-h, 110px); z-index: 9;
+    scrollbar-width: none;
+  }
+  #tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0; border: 1.5px solid #cfc6b0; background: #f5f0e8; color: #6b6656;
+    border-radius: 99px; padding: 6px 14px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .tab.active { color: #fff; border-color: transparent; }
+  .tab .tab-done { margin-left: 4px; }
+
+  #list-wrap { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .cat { background: #fffdf8; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(60,50,30,0.12); }
+  .cat-head {
+    display: flex; align-items: center; gap: 10px; padding: 13px 14px;
+    color: #fff; cursor: pointer; user-select: none;
+  }
+  .cat-emoji { font-size: 20px; }
+  .cat-label { font-size: 15px; font-weight: 700; flex: 1; }
+  .cat-stat { font-size: 12px; opacity: 0.9; }
+  .cat-chev { font-size: 12px; opacity: 0.85; transition: transform 0.2s; }
+  .cat.collapsed .cat-chev { transform: rotate(-90deg); }
+  .cat.collapsed .cat-body { display: none; }
+  .cat.complete .cat-head { opacity: 0.8; }
+
+  .pager { display: flex; align-items: center; gap: 4px; }
+  .pager button {
+    width: 26px; height: 26px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.28); color: #fff; font-size: 16px; font-weight: 700;
+    cursor: pointer; line-height: 1; padding: 0; font-family: inherit;
+  }
+  .pager-num { min-width: 22px; text-align: center; font-size: 14px; font-weight: 700; }
+
+  .cat-body { padding: 4px 0 6px; }
+  .item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid #f0eadb; cursor: pointer;
+  }
+  .item:last-child { border-bottom: none; }
+  .box {
+    width: 24px; height: 24px; border-radius: 50%; border: 2px solid #c9c0a8;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px; font-weight: 700; background: #fff;
+  }
+  .item.done .box { border-color: transparent; }
+  .item-text { font-size: 16px; flex: 1; }
+  .item.done .item-text { color: #b5ae9a; text-decoration: line-through; }
+
+  .memo-row { cursor: default; }
+  .memo-input {
+    flex: 1; border: none; border-bottom: 1.5px dashed #d8cfb8; background: transparent;
+    font-size: 16px; padding: 4px 2px; font-family: inherit; color: #3a3a34; outline: none; min-width: 0;
+  }
+  .memo-input:focus { border-bottom-color: #8a8062; }
+  .memo-row.done .memo-input { color: #b5ae9a; text-decoration: line-through; }
+  .memo-ctrl {
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    padding: 8px 16px 10px; font-size: 12px; color: #8a8470;
+  }
+  .memo-ctrl button {
+    width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #cfc6b0;
+    background: #fff; color: #6b6656; font-size: 16px; cursor: pointer; line-height: 1; padding: 0; font-family: inherit;
+  }
+  .memo-ctrl button:disabled { opacity: 0.35; cursor: default; }
+  .memo-label { min-width: 62px; text-align: center; }
+
+  #complete-msg {
+    text-align: center; padding: 20px;
+    color: #6a7a50; font-weight: 700; font-size: 16px;
+    display: none;
+  }
+
+  /* modal / toast */
+  #modal-back {
+    position: fixed; inset: 0; background: rgba(30,28,20,0.5); z-index: 50;
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  #modal-back.open { display: flex; }
+  #modal {
+    background: #fffdf8; width: 100%; max-width: 520px; border-radius: 18px 18px 0 0;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px)); max-height: 90vh; overflow-y: auto;
+  }
+  #modal h2 { font-size: 16px; margin-bottom: 6px; }
+  #modal p { font-size: 12.5px; color: #6b6656; line-height: 1.6; margin-bottom: 12px; }
+  .mbtn {
+    display: block; width: 100%; border: none; border-radius: 10px; padding: 12px;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 8px;
+    background: #3d4a3a; color: #f5f0e8;
+  }
+  .mbtn.sub { background: #ebe4d4; color: #3d4a3a; }
+  .mbtn.close { background: transparent; color: #8a8470; font-weight: 600; margin-bottom: 0; }
+  #code-area {
+    width: 100%; height: 90px; border: 1.5px solid #d8cfb8; border-radius: 10px; padding: 8px;
+    font-size: 11px; font-family: monospace; background: #fff; color: #3a3a34; margin-bottom: 8px; resize: vertical;
+  }
+  .sec-title { font-size: 12px; font-weight: 700; color: #8a8470; margin: 10px 0 6px; }
+  #toast {
+    position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: #3d4a3a; color: #f5f0e8; padding: 10px 18px; border-radius: 99px;
+    font-size: 13px; z-index: 60; display: none; max-width: 90%; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-top">
+    <div>
+      <div id="header-sub">マルシェ出店</div>
+      <div id="header-title">🎪 持ち物チェックリスト</div>
+    </div>
+    <div id="header-btns">
+      <button class="hbtn" onclick="openBackup()">バックアップ</button>
+      <button class="hbtn" onclick="resetAll()">リセット</button>
+    </div>
+  </div>
+  <div id="progress-bar-wrap"><div id="progress-bar" style="width:0%"></div></div>
+  <div id="progress-label">0 / 0 完了 (0%)</div>
+</div>
+
+<div id="tabs"></div>
+<div id="list-wrap"></div>
+<div id="complete-msg">✅ 準備完了！いってらっしゃい 🎪</div>
+
+<div id="modal-back" onclick="if(event.target===this)closeBackup()">
+  <div id="modal">
+    <h2>バックアップ</h2>
+    <p>チェック状態と追加メモをまとめて保存・復元できます。ブラウザのデータを消す前や、機種変更のときに使ってください。</p>
+    <div class="sec-title">保存</div>
+    <button class="mbtn" onclick="saveFile()">ファイルに保存</button>
+    <button class="mbtn sub" onclick="copyCode()">コードをコピー</button>
+    <div class="sec-title">復元</div>
+    <button class="mbtn sub" onclick="document.getElementById('file-input').click()">ファイルから復元</button>
+    <input type="file" id="file-input" accept=".json,application/json" style="display:none" onchange="restoreFile(this)">
+    <textarea id="code-area" placeholder="バックアップのコードを貼り付け" spellcheck="false"></textarea>
+    <button class="mbtn sub" onclick="restoreCode()">この欄のコードで復元</button>
+    <button class="mbtn close" onclick="closeBackup()">閉じる</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const STORAGE_KEY = "marche_checklist";
+const APP_ID = "marche-checklist";
+const MEMO_MAX = 10;
+
+const categories = [
+  { id:"booth", label:"ブース設営", emoji:"🎪", color:"#8c6a5a", memo:true,
+    items:["テント","ウエイト","120cmテーブル","4段テーブル","椅子(小)","テーブルクロス(ベージュ大)","テーブルクロス(赤チェック)","テーブルランナー(白)","クロス重り用ピンチ","屋号看板","価格看板","ワークショップ用手順看板","休憩中看板"],
+    pagerItems:["椅子(小)"] },
+  { id:"shohin", label:"商品", emoji:"🛍", color:"#7a6e8c", memo:true,
+    items:["包装袋","名刺","ショップカード"] },
+  { id:"kaikei", label:"会計", emoji:"💴", color:"#6a7a8c", memo:true,
+    items:["お釣り缶","お釣り","電卓","キャッシュレス決済端末","スマホ","モバイルバッテリー","領収書","メモ帳","筆記用具"] },
+  { id:"eisei", label:"衛生", emoji:"🧼", color:"#5a7a6e", memo:false,
+    items:["ウェットティッシュ","ゴミ袋","ビニール手袋","ペーパータオル","手洗い用の水"] },
+  { id:"jibun", label:"自分用", emoji:"🧢", color:"#7a8c6e", memo:false,
+    items:["お財布","飲み物","おやつ","ごはん類","帽子","日焼け止め","防寒着","合羽","救急用品","ヘッドライト"] },
+  { id:"shorui", label:"書類", emoji:"📋", color:"#6b7a99", memo:false,
+    items:["出店許可証","営業許可書類"] },
+  { id:"sonota", label:"その他", emoji:"📝", color:"#8c7a5a", memo:true, items:[] },
+  { id:"kaimono", label:"買い物", emoji:"🛒", color:"#a0705a", memo:true, items:[] },
+];
+
+const keyOf = (cat, item) => cat.id + ":" + item;
+
+function initState() {
+  const s = { checked:{}, memoText:{}, memoChecked:{}, memoCount:{}, count:1 };
+  categories.forEach(c => {
+    if (c.memo) {
+      s.memoText[c.id] = Array(MEMO_MAX).fill("");
+      s.memoChecked[c.id] = Array(MEMO_MAX).fill(false);
+      s.memoCount[c.id] = 1;
+    }
+  });
+  return s;
+}
+
+function normalize(raw) {
+  const s = initState();
+  if (!raw || typeof raw !== "object") return s;
+  categories.forEach(c => {
+    c.items.forEach(it => {
+      s.checked[keyOf(c, it)] = !!(raw.checked && raw.checked[keyOf(c, it)]);
+    });
+    if (c.memo) {
+      const t = raw.memoText && raw.memoText[c.id];
+      const k = raw.memoChecked && raw.memoChecked[c.id];
+      for (let i = 0; i < MEMO_MAX; i++) {
+        s.memoText[c.id][i] = (Array.isArray(t) && typeof t[i] === "string") ? t[i].slice(0, 200) : "";
+        s.memoChecked[c.id][i] = !!(Array.isArray(k) && k[i]);
+      }
+      const n = parseInt(raw.memoCount && raw.memoCount[c.id], 10);
+      s.memoCount[c.id] = (n >= 1 && n <= MEMO_MAX) ? n : 1;
+    }
+  });
+  const n = parseInt(raw.count, 10);
+  s.count = (n >= 1 && n <= MEMO_MAX) ? n : 1;
+  return s;
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) return normalize(JSON.parse(s));
+  } catch (e) {}
+  return initState();
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+let state = loadState();
+let activeTab = "all";
+let forceOpen = new Set();
+
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function catStats(c) {
+  let total = c.items.length, done = 0;
+  c.items.forEach(it => { if (state.checked[keyOf(c, it)]) done++; });
+  if (c.memo) {
+    for (let i = 0; i < state.memoCount[c.id]; i++) {
+      if (state.memoText[c.id][i].trim() !== "") {
+        total++;
+        if (state.memoChecked[c.id][i]) done++;
+      }
+    }
+  }
+  return { total, done, complete: total > 0 && done === total };
+}
+
+function updateProgress() {
+  let total = 0, done = 0;
+  categories.forEach(c => { const st = catStats(c); total += st.total; done += st.done; });
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById("progress-bar").style.width = pct + "%";
+  document.getElementById("progress-label").textContent = done + " / " + total + " 完了 (" + pct + "%)";
+  document.getElementById("complete-msg").style.display = (total > 0 && done === total) ? "block" : "none";
+}
+
+function setHeaderOffset() {
+  const h = document.getElementById("header").offsetHeight;
+  document.getElementById("tabs").style.setProperty("--header-h", h + "px");
+}
+
+function renderTabs() {
+  const tabs = document.getElementById("tabs");
+  let html = '<button class="tab' + (activeTab === "all" ? " active" : "") + '" style="' + (activeTab === "all" ? "background:#3d4a3a;" : "") + '" onclick="setTab(\'all\')">すべて</button>';
+  categories.forEach(c => {
+    const st = catStats(c);
+    const act = activeTab === c.id;
+    html += '<button class="tab' + (act ? " active" : "") + '" style="' + (act ? "background:" + c.color + ";" : "") + '" onclick="setTab(\'' + c.id + '\')">' +
+      c.emoji + " " + c.label + (st.complete ? '<span class="tab-done">✓</span>' : "") + "</button>";
+  });
+  tabs.innerHTML = html;
+}
+
+function renderCat(c) {
+  const st = catStats(c);
+  const collapsed = st.complete && !forceOpen.has(c.id);
+  let h = '<div class="cat' + (collapsed ? " collapsed" : "") + (st.complete ? " complete" : "") + '" id="cat-' + c.id + '">';
+  h += '<div class="cat-head" style="background:' + c.color + '" onclick="toggleCat(\'' + c.id + '\')">';
+  h += '<span class="cat-emoji">' + c.emoji + '</span><span class="cat-label">' + c.label + '</span>';
+  if (c.pagerItems) {
+    h += '<span class="pager" onclick="event.stopPropagation()"><button onclick="changeCount(-1)">−</button><span class="pager-num">' + state.count + '</span><button onclick="changeCount(1)">+</button></span>';
+  }
+  h += '<span class="cat-stat">' + st.done + '/' + st.total + '</span><span class="cat-chev">▼</span></div>';
+  h += '<div class="cat-body">';
+  c.items.forEach((it, i) => {
+    const checked = !!state.checked[keyOf(c, it)];
+    const showCnt = c.pagerItems && c.pagerItems.includes(it) && state.count > 1;
+    const cnt = showCnt ? ' <span style="font-size:12px;color:' + (checked ? "#bbb" : "#a08060") + ';font-weight:600">×' + state.count + '</span>' : "";
+    h += '<div class="item' + (checked ? " done" : "") + '" onclick="toggleItem(\'' + c.id + '\',' + i + ')">' +
+      '<div class="box" style="' + (checked ? "background:" + c.color + ";" : "") + '">' + (checked ? "✓" : "") + '</div>' +
+      '<div class="item-text">' + esc(it) + cnt + '</div></div>';
+  });
+  if (c.memo) {
+    for (let i = 0; i < state.memoCount[c.id]; i++) {
+      const txt = state.memoText[c.id][i];
+      const chk = !!state.memoChecked[c.id][i];
+      h += '<div class="item memo-row' + (chk ? " done" : "") + '">' +
+        '<div class="box" style="' + (chk ? "background:" + c.color + ";" : "") + '" onclick="toggleMemo(\'' + c.id + '\',' + i + ')">' + (chk ? "✓" : "") + '</div>' +
+        '<input class="memo-input" type="text" maxlength="200" placeholder="追加メモ" value="' + esc(txt) + '" ' +
+        'oninput="memoInput(\'' + c.id + '\',' + i + ',this.value)" onchange="render()"></div>';
+    }
+    const n = state.memoCount[c.id];
+    h += '<div class="memo-ctrl"><span class="memo-label">メモ欄 ' + n + '行</span>' +
+      '<button onclick="changeMemo(\'' + c.id + '\',-1)"' + (n <= 1 ? " disabled" : "") + '>−</button>' +
+      '<button onclick="changeMemo(\'' + c.id + '\',1)"' + (n >= MEMO_MAX ? " disabled" : "") + '>+</button></div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
+function render() {
+  const ae = document.activeElement;
+  const focusInfo = (ae && ae.classList && ae.classList.contains("memo-input")) ? true : false;
+  const list = categories.filter(c => activeTab === "all" || activeTab === c.id);
+  document.getElementById("list-wrap").innerHTML = list.map(renderCat).join("");
+  renderTabs();
+  updateProgress();
+  setHeaderOffset();
+}
+
+function setTab(id) { activeTab = id; render(); window.scrollTo({ top: 0 }); }
+
+function toggleCat(id) {
+  const c = categories.find(x => x.id === id);
+  if (!catStats(c).complete) return;
+  if (forceOpen.has(id)) forceOpen.delete(id); else forceOpen.add(id);
+  render();
+}
+
+function toggleItem(catId, idx) {
+  const c = categories.find(x => x.id === catId);
+  const k = keyOf(c, c.items[idx]);
+  state.checked[k] = !state.checked[k];
+  if (catStats(c).complete) forceOpen.delete(catId);
+  saveState(); render();
+}
+
+function toggleMemo(catId, i) {
+  const c = categories.find(x => x.id === catId);
+  if (state.memoText[catId][i].trim() === "") return;
+  state.memoChecked[catId][i] = !state.memoChecked[catId][i];
+  if (catStats(c).complete) forceOpen.delete(catId);
+  saveState(); render();
+}
+
+function memoInput(catId, i, val) {
+  state.memoText[catId][i] = val;
+  if (val.trim() === "") state.memoChecked[catId][i] = false;
+  saveState(); updateProgress();
+}
+
+function changeMemo(catId, d) {
+  const n = state.memoCount[catId] + d;
+  if (n < 1 || n > MEMO_MAX) return;
+  state.memoCount[catId] = n;
+  saveState(); render();
+}
+
+function changeCount(d) {
+  const n = state.count + d;
+  if (n < 1 || n > MEMO_MAX) return;
+  state.count = n;
+  saveState(); render();
+}
+
+function resetAll() {
+  if (!confirm("チェックをすべて外します。\n（追加メモの文字と個数は残ります）\nよろしいですか？")) return;
+  Object.keys(state.checked).forEach(k => { state.checked[k] = false; });
+  Object.keys(state.memoChecked).forEach(id => { state.memoChecked[id] = Array(MEMO_MAX).fill(false); });
+  forceOpen = new Set();
+  saveState(); render();
+  toast("チェックをリセットしました");
+}
+
+/* ---------- バックアップ ---------- */
+function buildBackup() {
+  return JSON.stringify({ app: APP_ID, version: 1, savedAt: new Date().toISOString(), state: state }, null, 2);
+}
+
+function openBackup() {
+  document.getElementById("code-area").value = buildBackup();
+  document.getElementById("modal-back").classList.add("open");
+}
+function closeBackup() { document.getElementById("modal-back").classList.remove("open"); }
+
+function saveFile() {
+  try {
+    const d = new Date();
+    const p = n => String(n).padStart(2, "0");
+    const name = "marche-checklist-backup-" + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + ".json";
+    const blob = new Blob([buildBackup()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast("ファイルに保存しました");
+  } catch (e) {
+    toast("保存できませんでした。「コードをコピー」をお使いください");
+  }
+}
+
+function copyCode() {
+  const ta = document.getElementById("code-area");
+  ta.value = buildBackup();
+  const done = () => toast("コピーしました。メモ帳などに貼り付けて保管してください");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(done, () => { ta.select(); try { document.execCommand("copy"); done(); } catch (e) { toast("欄を長押ししてコピーしてください"); } });
+  } else {
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { toast("欄を長押ししてコピーしてください"); }
+  }
+}
+
+function applyBackup(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { toast("読み込めませんでした。内容を確認してください"); return; }
+  if (!data || data.app !== APP_ID || !data.state) { toast("このアプリのバックアップではありません"); return; }
+  if (!confirm("現在の内容をバックアップの内容に置き換えます。よろしいですか？")) return;
+  state = normalize(data.state);
+  forceOpen = new Set();
+  saveState(); render(); closeBackup();
+  toast("復元しました");
+}
+
+function restoreFile(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { applyBackup(String(r.result)); input.value = ""; };
+  r.onerror = () => { toast("ファイルを読み込めませんでした"); input.value = ""; };
+  r.readAsText(f);
+}
+
+function restoreCode() {
+  const t = document.getElementById("code-area").value.trim();
+  if (!t) { toast("コードを貼り付けてください"); return; }
+  applyBackup(t);
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = "none"; }, 2600);
+}
+
+window.addEventListener("resize", setHeaderOffset);
+render();
+</script>
+</body>
+</html>
